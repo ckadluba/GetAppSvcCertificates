@@ -25,7 +25,7 @@ if ($null -eq $resourceGroupNames){
     $resourceGroupNames = Get-AzResourceGroup | Select-Object -ExpandProperty ResourceGroupName
 }
 
-Write-Output "Certificate Name; Subject Name; Thumbprint; Issuer; IssueDate; Expiration Date; Hostnames; KeyVault; Resource Group"
+Write-Output "Certificate Name;Subject Name;Thumbprint;Issuer;IssueDate;Expiration Date;Hostnames;KeyVault Name;KeyVault Secret Name;Resource Group"
 
 foreach ($resourceGroupName in $resourceGroupNames) {
     $certs = Get-AzWebAppCertificate -ResourceGroupName "$resourceGroupName"
@@ -44,7 +44,8 @@ foreach ($resourceGroupName in $resourceGroupNames) {
 
         $hostNames = [System.String]::Join(", ", $cert.HostNames)
         $keyVaultName = ($cert.KeyVaultId -split '/')[-1]
-        Write-Output ("{0}; {1}; {2}; {3}; {4}; {5}; {6}; {7}; {8}" -f 
-            $cert.Name, $cert.SubjectName, $cert.Thumbprint, $cert.Issuer, $cert.IssueDate, $cert.ExpirationDate, $hostNames, $keyVaultName, $resourceGroupName)
+        Write-Output ("{0};{1};{2};{3};{4};{5};{6};{7};{8};{9}" -f 
+            $cert.Name, $cert.SubjectName, $cert.Thumbprint, $cert.Issuer, $cert.IssueDate, $cert.ExpirationDate, 
+            $hostNames, $keyVaultName, $cert.KeyVaultSecretName, $resourceGroupName)
     }
 }
