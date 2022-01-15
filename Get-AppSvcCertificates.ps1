@@ -4,15 +4,18 @@ param (
     [Parameter(Mandatory = $true)]
     [System.String]
     $Subscription,
+
     [Parameter(Mandatory = $false)]
     [System.String[]]
     $ResourceGroups,
+
     [Parameter(Mandatory = $false)]
     [System.DateTime]
     $ExpiresBefore,
+
     [Parameter(Mandatory = $false)]
-    [System.String]
-    $Thumbprint
+    [System.String[]]
+    $Thumbprints
 )
 
 $context = Get-AzContext
@@ -36,8 +39,8 @@ foreach ($resourceGroupName in $resourceGroupNames) {
             }
         }
 
-        if ($Thumbprint -ne "") {
-            if ($cert.Thumbprint -ne $Thumbprint) {
+        if ($null -ne $Thumbprints) {
+            if (-not ($Thumbprints.Contains($cert.Thumbprint))) {
                 continue
             }
         }
