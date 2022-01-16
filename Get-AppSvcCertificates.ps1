@@ -18,6 +18,58 @@ param (
     $Thumbprints
 )
 
+function SearchAndLinkSllBindingsForWebApp {
+    param (
+        [Parameter(Mandatory = $true)]
+        [PSObject[]]
+        $CertsAggregates,
+
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $ResourceGroupName,
+
+        [Parameter(Mandatory = $false)]
+        [System.String]
+        $AseId,
+
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $WebAppName,
+
+        [Parameter(Mandatory = $false)]
+        [System.String]
+        $WebAppSlotName
+    )
+
+    if ($WebAppSlotName -eq "") {
+        Write-Host "Searching web app SSL bindings of web app $WebAppName"
+        $sslBindings = Get-AzWebAppSSLBinding -ResourceGroupName "$ResourceGroupName" -WebAppName $WebAppName
+    }
+    else {
+        Write-Host "Searching web app SSL bindings of web app $WebAppName slot $WebAppSlotName"
+        $sslBindings = Get-AzWebAppSSLBinding -ResourceGroupName "$ResourceGroupName" -WebAppName $WebAppName -Slot "$WebAppSlotName"
+    }
+
+    foreach ($sslBinding in $sslBindings) {
+        $certsAggregateMatches = $CertsAggregates
+            | Where-Object { ($_.Thumbprint -eq $sslBinding.Thumbprint) -and ($_.AseId -eq $AseId) }
+        foreach ($certsAggregateMatch in $certsAggregateMatches) {
+            if ($certsAggregateMatch.WebAppName -eq "") {
+                $certsAggregateMatch.WebAppName = $WebAppName
+            }
+            else {
+                throw "Error: web app $WebAppName has an SSL binding for cert $(certsAggregateMatch.Name) but web app $(certsAggregateMatch.WebAppName) slot $(certsAggregateMatch.WebAppSlot) also has."
+            }
+            if ($certsAggregateMatch.WebAppSlot -eq "") {
+                $certsAggregateMatch.WebAppSlot = $WebAppSlotName
+            }
+            else {
+                throw "Error: web app $WebAppName slot $WebAppSlotName has an SSL binding for cert $(certsAggregateMatch.Name) but web app $(certsAggregateMatch.WebAppName) slot $(certsAggregateMatch.WebAppSlot) also has."
+            }
+        }
+    }    
+}
+
 $context = Get-AzContext
 if ($null -eq $context.Subscription || $context.Subscription.Name -ne $Subscription) {
     Write-Host "Connect account and set context to subscription $Subscription"
@@ -79,43 +131,13 @@ foreach ($resourceGroupName in $resourceGroupNames) {
 
     foreach ($webApp in $webApps) {
         $webAppName = $webApp.Name
-
-        Write-Host "Searching web app SSL bindings of web app $webAppName"
-        $sslBindings = Get-AzWebAppSSLBinding -ResourceGroupName "$resourceGroupName" -WebAppName $webAppName
-        foreach ($sslBinding in $sslBindings) {
-            $certsAggregateMatches = $certsAggregates
-                | Where-Object { ($_.Thumbprint -eq $sslBinding.Thumbprint) -and ($_.AseId -eq $webApp.HostingEnvironmentProfile.Id) }
-            foreach ($certsAggregateMatch in $certsAggregateMatches) {
-                if ($certsAggregateMatch.WebAppName -eq "") {
-                    $certsAggregateMatch.WebAppName = $webAppName
-                }
-                else {
-                    throw "Error: web app $webAppName has an SSL binding for cert $(certsAggregateMatch.Name) but web app $(certsAggregateMatch.WebAppName) also has."
-                }
-            }
-        }
+        SearchAndLinkSllBindingsForWebApp $certsAggregates $resourceGroupName $webApp.HostingEnvironmentProfile.Id $webAppName
 
         Write-Host "Searching deploymemt slots of web app $webAppName"
         $webAppSlots = Get-AzWebAppSlot -WebApp $webApp
         foreach ($webAppSlot in $webAppSlots) {
             $webAppSlotName = ($webAppSlot.Name -split '/')[-1]
-
-            Write-Host "Searching web app SSL bindings of web app $webAppName slot $webAppSlotName"
-            $sslBindings = Get-AzWebAppSSLBinding -ResourceGroupName "$resourceGroupName" -WebAppName $webAppName -Slot "$webAppSlotName"
-            foreach ($sslBinding in $sslBindings) {
-                $certsAggregateMatches = $certsAggregates
-                    | Where-Object { ($_.Thumbprint -eq $sslBinding.Thumbprint) -and ($_.AseId -eq $webAppSlot.HostingEnvironmentProfile.Id) }
-                foreach ($certsAggregateMatch in $certsAggregateMatches) {
-                    if (($certsAggregateMatch.WebAppName -eq "") -and ($certsAggregateMatch.WebAppSlot -eq "")) {
-                        $certsAggregateMatch.WebAppName = $webAppName
-                        $certsAggregateMatch.WebAppSlot = $webAppSlotName
-                    }
-                    else {
-                        throw "Error: web app $webAppName slot $webAppSlotName has an SSL binding for cert $(certsAggregateMatch.Name) but web app $(certsAggregateMatch.WebAppName) slot $(certsAggregateMatch.WebAppSlot) also has."
-                    }
-                }
-            }    
-
+            SearchAndLinkSllBindingsForWebApp $certsAggregates $resourceGroupName $webAppSlot.HostingEnvironmentProfile.Id $webAppName $webAppSlotName
         }
     }
 }
