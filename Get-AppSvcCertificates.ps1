@@ -42,16 +42,18 @@ function SearchAndLinkSllBindingsForWebApp {
     )
 
     if ($WebAppSlotName -eq "") {
-        Write-Host "Searching web app SSL bindings of web app $WebAppName"
+        Write-Host "Searching SSL bindings of web app $WebAppName"
         $sslBindings = Get-AzWebAppSSLBinding -ResourceGroupName "$ResourceGroupName" -WebAppName $WebAppName
     }
     else {
-        Write-Host "Searching web app SSL bindings of web app $WebAppName slot $WebAppSlotName"
+        Write-Host "Searching SSL bindings of web app $WebAppName slot $WebAppSlotName"
         $sslBindings = Get-AzWebAppSSLBinding -ResourceGroupName "$ResourceGroupName" -WebAppName $WebAppName -Slot "$WebAppSlotName"
     }
 
+    $certsOfCurrentResourceGroup = $CertsAggregates | Where-Object { $_.ResourceGroupName -eq $ResourceGroupName }
+
     foreach ($sslBinding in $sslBindings) {
-        $certsAggregateMatches = $CertsAggregates
+        $certsAggregateMatches = $certsOfCurrentResourceGroup
             | Where-Object { ($_.Thumbprint -eq $sslBinding.Thumbprint) -and ($_.AseId -eq $AseId) }
         foreach ($certsAggregateMatch in $certsAggregateMatches) {
             if ($certsAggregateMatch.WebAppName -eq "") {
@@ -133,7 +135,7 @@ foreach ($resourceGroupName in $resourceGroupNames) {
         $webAppName = $webApp.Name
         SearchAndLinkSllBindingsForWebApp $certsAggregates $resourceGroupName $webApp.HostingEnvironmentProfile.Id $webAppName
 
-        Write-Host "Searching deploymemt slots of web app $webAppName"
+        Write-Host "Searching deployment slots of web app $webAppName"
         $webAppSlots = Get-AzWebAppSlot -WebApp $webApp
         foreach ($webAppSlot in $webAppSlots) {
             $webAppSlotName = ($webAppSlot.Name -split '/')[-1]
