@@ -73,7 +73,7 @@ function SearchAndLinkSllBindingsForWebApp {
 $context = Get-AzContext
 if (($null -eq $context.Subscription) -or ($context.Subscription.Name -ne $Subscription)) {
     Write-Host "Connect account and set context to subscription $Subscription"
-    Connect-AzAccount -Subscription "$Subscription"
+    Connect-AzAccount -Subscription "$Subscription" | Out-Null
 }
 
 $resourceGroupNames = $ResourceGroups
