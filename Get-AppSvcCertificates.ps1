@@ -138,21 +138,4 @@ foreach ($resourceGroupName in $resourceGroupNames) {
     }
 }
 
-# Write CSV output
-Write-Output "Certificate Name;Subject Name;Thumbprint;Issuer;IssueDate;Expiration Date;Hostnames;KeyVault Name;KeyVault Secret Name;Resource Group;ASE Name;Web App Name;Web App Slot"
-foreach ($certAggregate in $certsAggregates) {
-    Write-Output ("{0};{1};{2};{3};{4};{5};{6};{7};{8};{9};{10};{11};{12}" -f 
-        $certAggregate.Name, 
-        $certAggregate.SubjectName, 
-        $certAggregate.Thumbprint, 
-        $certAggregate.Issuer, 
-        $certAggregate.IssueDate, 
-        $certAggregate.ExpirationDate, 
-        $certAggregate.HostNamesFlat, 
-        $certAggregate.KeyVaultName, 
-        $certAggregate.KeyVaultSecretName, 
-        $certAggregate.ResourceGroupName, 
-        $certAggregate.AseName, 
-        $certAggregate.WebAppName,
-        $certAggregate.WebAppSlot)
-}
+Write-Output $certsAggregates | ConvertTo-Csv -Delimiter ';'
