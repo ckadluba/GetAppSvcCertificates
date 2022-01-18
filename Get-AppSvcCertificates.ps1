@@ -18,19 +18,15 @@ param (
     $Thumbprints
 )
 
-function SearchAndLinkSllBindingsForWebApp {
+function SearchAndLinkSllBindingsForWebAppOrSlot {
     param (
         [Parameter(Mandatory = $true)]
         [PSObject[]]
         $CertsAggregates,
 
         [Parameter(Mandatory = $true)]
-        [System.String]
-        $ResourceGroupName,
-
-        [Parameter(Mandatory = $false)]
-        [System.String]
-        $AseId,
+        [Microsoft.Azure.Management.WebSites.Models.HostNameSslState[]]
+        $HostNameSslStates,
 
         [Parameter(Mandatory = $true)]
         [System.String]
@@ -41,20 +37,10 @@ function SearchAndLinkSllBindingsForWebApp {
         $WebAppSlotName
     )
 
-    if ($WebAppSlotName -eq "") {
-        Write-Host "Searching SSL bindings of web app $WebAppName"
-        $sslBindings = Get-AzWebAppSSLBinding -ResourceGroupName "$ResourceGroupName" -WebAppName $WebAppName
-    }
-    else {
-        Write-Host "Searching SSL bindings of web app $WebAppName slot $WebAppSlotName"
-        $sslBindings = Get-AzWebAppSSLBinding -ResourceGroupName "$ResourceGroupName" -WebAppName $WebAppName -Slot "$WebAppSlotName"
-    }
+    $activeHostNameSslStates = $HostNameSslStates | Where-Object { ($_.SslState -ne "Disabled") -and ($_.Thumbprint -ne "") }
 
-    $certsOfCurrentResourceGroup = $CertsAggregates | Where-Object { $_.ResourceGroupName -eq $ResourceGroupName }
-
-    foreach ($sslBinding in $sslBindings) {
-        $certsAggregateMatches = $certsOfCurrentResourceGroup
-            | Where-Object { ($_.Thumbprint -eq $sslBinding.Thumbprint) -and ($_.AseId -eq $AseId) }
+    foreach ($hostNameSslState in $activeHostNameSslStates) {
+        $certsAggregateMatches = $CertsAggregates | Where-Object { $_.Thumbprint -eq $hostNameSslState.Thumbprint }
         foreach ($certsAggregateMatch in $certsAggregateMatches) {
             if ($certsAggregateMatch.WebAppName -eq "") {
                 $certsAggregateMatch.WebAppName = $WebAppName
@@ -128,18 +114,26 @@ foreach ($resourceGroupName in $resourceGroupNames) {
 
 Write-Host "Searching web apps and SSL bindings in resource groups of subscription $Subscription"
 foreach ($resourceGroupName in $resourceGroupNames) {
+
+    # Only add web app and slot to certs found in the same RG
+    $certAggregatesOfCurrentResourceGroup = $certsAggregates | Where-Object { $_.ResourceGroupName -eq $ResourceGroupName }
+    if ($null -eq $certAggregatesOfCurrentResourceGroup) {
+        Write-Host "No web app certificates found in RG $resourceGroupName"
+        continue
+    }
+
     Write-Host "Searching web apps in RG $resourceGroupName"
     $webApps = Get-AzWebApp -ResourceGroupName "$resourceGroupName"
 
     foreach ($webApp in $webApps) {
         $webAppName = $webApp.Name
-        SearchAndLinkSllBindingsForWebApp $certsAggregates $resourceGroupName $webApp.HostingEnvironmentProfile.Id $webAppName
+        SearchAndLinkSllBindingsForWebAppOrSlot $certAggregatesOfCurrentResourceGroup $webApp.HostNameSslStates $webAppName
 
         Write-Host "Searching deployment slots of web app $webAppName"
         $webAppSlots = Get-AzWebAppSlot -WebApp $webApp
         foreach ($webAppSlot in $webAppSlots) {
             $webAppSlotName = ($webAppSlot.Name -split '/')[-1]
-            SearchAndLinkSllBindingsForWebApp $certsAggregates $resourceGroupName $webAppSlot.HostingEnvironmentProfile.Id $webAppName $webAppSlotName
+            SearchAndLinkSllBindingsForWebAppOrSlot $certAggregatesOfCurrentResourceGroup $webAppSlot.HostNameSslStates $webAppName $webAppSlotName
         }
     }
 }
