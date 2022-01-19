@@ -59,9 +59,12 @@ function SearchAndLinkSllBindingsForWebAppOrSlot {
 }
 
 $context = Get-AzContext
-if (($null -eq $context.Subscription) -or ($context.Subscription.Name -ne $Subscription)) {
+if (($null -eq $context.Subscription) -or ($context.Subscription.Name -ne "$Subscription")) {
     Write-Host "Connect account and set context to subscription $Subscription"
-    Connect-AzAccount -Subscription "$Subscription" | Out-Null
+    $connectResult = Connect-AzAccount -Subscription "$Subscription"
+    if ($connectResult.SubjectName -ne "$Subscription") {
+        throw "Could not connect to Azure subscription $Subscription"
+    }
 }
 
 $resourceGroupNames = $ResourceGroups
@@ -104,7 +107,6 @@ foreach ($resourceGroupName in $resourceGroupNames) {
         $certObj | Add-Member "KeyVaultName" $keyVaultName
         $certObj | Add-Member "ResourceGroupName" $resourceGroupName
         $certObj | Add-Member "AseName" $cert.HostingEnvironmentProfile.Name
-        $certObj | Add-Member "AseId" $cert.HostingEnvironmentProfile.Id
         $certObj | Add-Member "WebAppName" ""
         $certObj | Add-Member "WebAppSlot" ""
 
