@@ -140,4 +140,4 @@ foreach ($resourceGroupName in $resourceGroupNames) {
     }
 }
 
-Write-Output $certsAggregates | ConvertTo-Csv -Delimiter ';'
+Write-Output $certsAggregates

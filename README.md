@@ -1,6 +1,6 @@
 # GetAppSvcCertificates
 
-A script to find expired or specific certificates on all Azure app services (or ASEs) within a specified subscription or resource groups. The script generates a (semicolon separated) CSV output including the name, thumbprint, hostname bindings, keyvault info if applicable, ASE and web app ssl bindings and the resource group for all found certificates. 
+A script to find expired or specific certificates on all Azure app services (or ASEs) within a specified subscription or resource groups. The script returns a collection of certificate info objects containing the name, thumbprint, hostname bindings, keyvault info if applicable, ASE and web app SSL bindings and the resource group for all found certificates. 
 
 # Usage
 ```
@@ -12,7 +12,7 @@ Get-AppSvcCertificates -Subscription <SubscriptionName> [-ResourceGroups <Resour
 Find all certificates in 'MySubscription' and write ouput to file certs.csv
 
 ```powershell
-.\Get-AppSvcCertificates.ps1 -Subscription "MySubscription" | Out-File certs.csv
+.\Get-AppSvcCertificates.ps1 -Subscription "MySubscription" | ConvertTo-Csv -Delimiter ';' | Out-File certs.csv
 ```
 
 Find all certificates in resource groups 'MyResGroup1' and 'MyResGroup2'. 
